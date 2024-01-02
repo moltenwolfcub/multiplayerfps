@@ -1,7 +1,10 @@
 package common
 
 import (
+	"encoding/gob"
 	"net"
+
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 type Packet interface {
@@ -13,5 +16,14 @@ type RecievedPacket struct {
 }
 
 func RegisterPackets() {
-	// gob.Register()
+	gob.Register(ServerBoundLightingRequest{})
+
+	gob.Register(ClientBoundLightingUpdate{})
+}
+
+type ServerBoundLightingRequest struct {
+}
+
+type ClientBoundLightingUpdate struct {
+	Color mgl32.Vec3
 }

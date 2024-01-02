@@ -24,6 +24,8 @@ type Client struct {
 	shader  *gogl.Shader
 	texture gogl.TextureID
 	cube    gogl.Object
+
+	lightingColor mgl32.Vec3
 }
 
 func NewClient(listenAddr string) *Client {
@@ -91,6 +93,8 @@ func (c *Client) initialise() func() {
 
 	gl.BindVertexArray(0)
 
+	c.connection.MustSend(common.ServerBoundLightingRequest{})
+
 	c.keyboardState = sdl.GetKeyboardState()
 	c.camera = gogl.NewCamera(mgl32.Vec3{}, mgl32.Vec3{0, 1, 0}, 0, 0, 0.0025, 0.1)
 
@@ -148,8 +152,8 @@ func (c *Client) mainLoop() error {
 
 		c.shader.SetVec3("viewPos", c.camera.Pos)
 		c.shader.SetVec3("lightPos", mgl32.Vec3{3.3, 1, 0})
-		c.shader.SetVec3("lightColor", mgl32.Vec3{1, 1, 1})
-		c.shader.SetVec3("ambientLight", mgl32.Vec3{0.3, 0.3, 0.3})
+		c.shader.SetVec3("lightColor", c.lightingColor)
+		c.shader.SetVec3("ambientLight", c.lightingColor.Mul(0.3))
 
 		gogl.BindTexture(c.texture)
 
@@ -174,6 +178,8 @@ and correctly handle how it should behave.
 */
 func (c *Client) handlePacket(rawPacket common.Packet) error {
 	switch packet := rawPacket.(type) {
+	case common.ClientBoundLightingUpdate:
+		c.lightingColor = packet.Color
 	default:
 		return fmt.Errorf("unkown packet: %s", packet)
 	}

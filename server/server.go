@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/moltenwolfcub/multiplayerfps/common"
 )
 
@@ -14,6 +15,8 @@ type Server struct {
 	quitCh     chan struct{}
 	inMsgCh    chan common.RecievedPacket
 	peers      map[net.Addr]common.Connection
+
+	lightColor mgl32.Vec3
 }
 
 func NewServer(listenAddr string) *Server {
@@ -43,6 +46,8 @@ func (s *Server) Start() {
 		common.ErrorLogger.Fatal("couldn't convert listener's address to a TCP address")
 	}
 	common.InfoLogger.Printf("Local server hosted on port %d\n", addr.Port)
+
+	s.initialise()
 
 	go s.mainLoop()
 	go s.packetLoop()
@@ -113,6 +118,10 @@ func (s *Server) packetLoop() {
 
 // ONLY EDIT BELOW THIS LINE! The above code handles the server setup and network connections
 
+func (s *Server) initialise() {
+	s.lightColor = mgl32.Vec3{1, 0, 1}
+}
+
 /*
 Main loop that'll handle the serverside logic and state.
 */
@@ -127,6 +136,11 @@ and correctly handle how it should behave.
 */
 func (s *Server) handlePacket(recieved common.RecievedPacket) {
 	switch packet := recieved.Packet.(type) {
+	case common.ServerBoundLightingRequest:
+		err := s.peers[recieved.Sender].Send(common.ClientBoundLightingUpdate{Color: s.lightColor})
+		if err != nil {
+			common.WarningLogger.Println("unable to send lighting update to client", err)
+		}
 	default:
 		common.ErrorLogger.Fatalf("unknown packet: %s", packet)
 	}

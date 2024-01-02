@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"time"
 
@@ -105,6 +106,7 @@ func (c *Client) initialise() func() {
 Main loop that'll handle the clientside logic and state.
 */
 func (c *Client) mainLoop() error {
+	colorCooldown := 0
 
 	elapsedTime := float32(0)
 	for {
@@ -124,6 +126,22 @@ func (c *Client) mainLoop() error {
 		}
 		if c.keyboardState[sdl.SCANCODE_ESCAPE] != 0 {
 			return nil
+		}
+		if c.keyboardState[sdl.SCANCODE_L] != 0 && colorCooldown == 0 {
+			colorCooldown = 20
+			newCol := mgl32.Vec3{
+				rand.Float32(),
+				rand.Float32(),
+				rand.Float32(),
+			}
+			err := c.connection.Send(common.ServerBoundLightingUpdate{Color: newCol})
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+		if colorCooldown > 0 {
+			colorCooldown--
 		}
 
 		//updateCamera

@@ -141,6 +141,15 @@ func (s *Server) handlePacket(recieved common.RecievedPacket) {
 		if err != nil {
 			common.WarningLogger.Println("unable to send lighting update to client", err)
 		}
+	case common.ServerBoundLightingUpdate:
+		s.lightColor = packet.Color
+		for _, conn := range s.peers {
+			err := conn.Send(common.ClientBoundLightingUpdate{Color: s.lightColor})
+			if err != nil {
+				common.WarningLogger.Println("unable to send lighting update to client", err)
+			}
+		}
+
 	default:
 		common.ErrorLogger.Fatalf("unknown packet: %s", packet)
 	}

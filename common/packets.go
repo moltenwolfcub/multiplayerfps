@@ -17,11 +17,16 @@ type RecievedPacket struct {
 
 func RegisterPackets() {
 	gob.Register(ServerBoundLightingRequest{})
+	gob.Register(ServerBoundLightingUpdate{})
 
 	gob.Register(ClientBoundLightingUpdate{})
 }
 
 type ServerBoundLightingRequest struct {
+}
+
+type ServerBoundLightingUpdate struct {
+	Color mgl32.Vec3
 }
 
 type ClientBoundLightingUpdate struct {

@@ -108,6 +108,9 @@ Main loop that'll handle the clientside logic and state.
 */
 func (c *Client) mainLoop() error {
 	colorPressed := true
+	pausePressed := true
+
+	paused := false
 
 	elapsedTime := float32(0)
 	for {
@@ -142,19 +145,33 @@ func (c *Client) mainLoop() error {
 		} else if c.keyboardState[sdl.SCANCODE_L] == 0 && colorPressed {
 			colorPressed = false
 		}
+		if c.keyboardState[sdl.SCANCODE_R] != 0 && !pausePressed {
+			pausePressed = true
+
+			paused = !paused
+			sdl.SetRelativeMouseMode(!paused)
+
+			if !paused {
+				c.window.WarpMouseInWindow(windowWidth/2, windowHeight/2)
+			}
+		} else if c.keyboardState[sdl.SCANCODE_R] == 0 && pausePressed {
+			pausePressed = false
+		}
 
 		//updateCamera
-		dirs := gogl.NewMoveDirs(
-			c.keyboardState[sdl.SCANCODE_W] != 0,
-			c.keyboardState[sdl.SCANCODE_S] != 0,
-			c.keyboardState[sdl.SCANCODE_D] != 0,
-			c.keyboardState[sdl.SCANCODE_A] != 0,
-			c.keyboardState[sdl.SCANCODE_SPACE] != 0,
-			c.keyboardState[sdl.SCANCODE_LSHIFT] != 0,
-		)
-		mouseX, mouseY, _ := sdl.GetMouseState()
-		mouseDx, mouseDy := float32(mouseX-windowWidth/2), -float32(mouseY-windowHeight/2)
-		c.camera.UpdateCamera(dirs, elapsedTime, mouseDx, mouseDy)
+		if !paused {
+			dirs := gogl.NewMoveDirs(
+				c.keyboardState[sdl.SCANCODE_W] != 0,
+				c.keyboardState[sdl.SCANCODE_S] != 0,
+				c.keyboardState[sdl.SCANCODE_D] != 0,
+				c.keyboardState[sdl.SCANCODE_A] != 0,
+				c.keyboardState[sdl.SCANCODE_SPACE] != 0,
+				c.keyboardState[sdl.SCANCODE_LSHIFT] != 0,
+			)
+			mouseX, mouseY, _ := sdl.GetMouseState()
+			mouseDx, mouseDy := float32(mouseX-windowWidth/2), -float32(mouseY-windowHeight/2)
+			c.camera.UpdateCamera(dirs, elapsedTime, mouseDx, mouseDy)
+		}
 
 		//draw
 		gl.ClearColor(0.0, 0.0, 0.0, 0.0)
@@ -182,9 +199,11 @@ func (c *Client) mainLoop() error {
 		c.shader.CheckShadersForChanges()
 		elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
 
-		sdl.EventState(sdl.MOUSEMOTION, sdl.IGNORE)
-		c.window.WarpMouseInWindow(windowWidth/2, windowHeight/2)
-		sdl.EventState(sdl.MOUSEMOTION, sdl.ENABLE)
+		if !paused {
+			sdl.EventState(sdl.MOUSEMOTION, sdl.IGNORE)
+			c.window.WarpMouseInWindow(windowWidth/2, windowHeight/2)
+			sdl.EventState(sdl.MOUSEMOTION, sdl.ENABLE)
+		}
 	}
 }
 

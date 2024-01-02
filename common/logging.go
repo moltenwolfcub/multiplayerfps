@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -33,6 +34,14 @@ func SetupServerLogger() func() {
 const logDir = "logs/serverLogs"
 
 func SetupLoggerFiles() (*os.File, *os.File, func(), error) {
+
+	parentDir := strings.Split(logDir, "/")[0]
+	if _, err := os.Stat(parentDir); errors.Is(err, os.ErrNotExist) {
+		if err := os.Mkdir(parentDir, os.ModePerm); err != nil {
+			return nil, nil, nil, fmt.Errorf("error creating logger directory: %v", err.Error())
+		}
+	}
+
 	if _, err := os.Stat(logDir); errors.Is(err, os.ErrNotExist) {
 		if err := os.Mkdir(logDir, os.ModePerm); err != nil {
 			return nil, nil, nil, fmt.Errorf("error creating logger directory: %v", err.Error())

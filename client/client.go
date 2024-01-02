@@ -10,6 +10,7 @@ import (
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/moltenwolfcub/gogl-utils"
+	"github.com/moltenwolfcub/multiplayerfps/assets"
 	"github.com/moltenwolfcub/multiplayerfps/common"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -22,7 +23,7 @@ type Client struct {
 	keyboardState []uint8
 	camera        *gogl.Camera
 
-	shader  *gogl.Shader
+	shader  gogl.Shader
 	texture gogl.TextureID
 	cube    gogl.Object
 
@@ -87,8 +88,8 @@ func (c *Client) initialise() func() {
 
 	window.WarpMouseInWindow(windowWidth/2, windowHeight/2)
 
-	c.shader = gogl.NewShader("assets/shaders/test.vert", "assets/shaders/quadTexture.frag")
-	c.texture = gogl.LoadTexture("assets/textures/metal/metalbox_full.png")
+	c.shader = gogl.Shader(gogl.NewEmbeddedShader(assets.TestVert, assets.QuadTexture))
+	c.texture = gogl.LoadTextureFromImage(assets.Metal_full)
 
 	c.cube = gogl.Cube(1)
 
@@ -156,7 +157,6 @@ func (c *Client) mainLoop() error {
 		mouseX, mouseY, _ := sdl.GetMouseState()
 		mouseDx, mouseDy := float32(mouseX-windowWidth/2), -float32(mouseY-windowHeight/2)
 		c.camera.UpdateCamera(dirs, elapsedTime, mouseDx, mouseDy)
-		// log.Println(mouseDx, mouseDy)
 
 		//draw
 		gl.ClearColor(0.0, 0.0, 0.0, 0.0)

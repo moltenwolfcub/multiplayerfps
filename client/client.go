@@ -84,7 +84,7 @@ var (
 func (c *Client) initialise() func() {
 	window, cleanup := gogl.SetupFPSWindow("Multiplayer FPS", windowWidth, windowHeight)
 	c.window = window
-	fmt.Println("OpenGL Version", gogl.GetVersion())
+	log.Println("OpenGL Version", gogl.GetVersion())
 
 	window.WarpMouseInWindow(windowWidth/2, windowHeight/2)
 
@@ -122,9 +122,14 @@ func (c *Client) mainLoop() error {
 			case *sdl.QuitEvent:
 				return nil
 			case *sdl.WindowEvent:
-				if e.Event == sdl.WINDOWEVENT_RESIZED {
+				switch e.Event {
+				case sdl.WINDOWEVENT_RESIZED:
 					windowWidth, windowHeight = e.Data1, e.Data2
 					gl.Viewport(0, 0, windowWidth, windowHeight)
+
+				case sdl.WINDOWEVENT_FOCUS_LOST, sdl.WINDOWEVENT_LEAVE:
+					paused = true
+					sdl.SetRelativeMouseMode(false)
 				}
 			}
 		}
@@ -140,7 +145,7 @@ func (c *Client) mainLoop() error {
 			}
 			err := c.connection.Send(common.ServerBoundLightingUpdate{Color: newCol})
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 		} else if c.keyboardState[sdl.SCANCODE_L] == 0 && colorPressed {
 			colorPressed = false

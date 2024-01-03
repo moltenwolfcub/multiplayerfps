@@ -17,7 +17,7 @@ uniform mat4 proj;
 void main() {
 	FragPos = vec3(model*vec4(aPos,1.0));
 
-	gl_Position = proj*view*model*vec4(FragPos,1.0f);
+	gl_Position = proj*view*vec4(FragPos,1.0f);
 	TexCoord = vec2(aTexCoord.x, 1.0f - aTexCoord.y);
 	ModelPos = vec3(model[3]);
 

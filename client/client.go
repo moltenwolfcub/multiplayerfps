@@ -209,12 +209,8 @@ func (c *Client) mainLoop() error {
 
 		gogl.BindTexture(c.texture)
 
-		// c.cube.DrawMultiple(c.shader, 5, func(i int) mgl32.Mat4 {
-		// 	return mgl32.Ident4().Mul4(mgl32.Translate3D(1, 0, float32(2*i)))
-		// })
 		for _, obj := range c.worldState.objects {
 			obj.Parent.Draw(c.shader, obj.ModelMatrix)
-			log.Println("\n", obj, "\n", obj.ModelMatrix)
 		}
 
 		//post draw

@@ -25,9 +25,12 @@ type Client struct {
 
 	shader  gogl.Shader
 	texture gogl.TextureID
-	cube    gogl.Object
 
 	lightingColor mgl32.Vec3
+
+	tmpServerState common.WorldState //don't want to implement packets on server until it works
+
+	worldState worldState
 }
 
 func NewClient(listenAddr string) *Client {
@@ -91,7 +94,18 @@ func (c *Client) initialise() func() {
 	c.shader = gogl.Shader(gogl.NewEmbeddedShader(assets.TestVert, assets.QuadTexture))
 	c.texture = gogl.LoadTextureFromImage(assets.Metal_full)
 
-	c.cube = gogl.Cube(1)
+	c.tmpServerState = common.WorldState{
+		Volumes: []common.Volume{
+			common.NewVolume(mgl32.Vec3{-10, -5, -10}, mgl32.Vec3{10, -4, 10}),
+			common.NewVolume(mgl32.Vec3{-10, 5, -10}, mgl32.Vec3{10, 4, 10}),
+			common.NewVolume(mgl32.Vec3{-1, -1, -1}, mgl32.Vec3{1, 1, 1}),
+		},
+	}
+	var err error
+	c.worldState, err = NewWorldState(c.tmpServerState)
+	if err != nil {
+		log.Fatalln("failed to load world state from server:", err)
+	}
 
 	gl.BindVertexArray(0)
 
@@ -195,9 +209,13 @@ func (c *Client) mainLoop() error {
 
 		gogl.BindTexture(c.texture)
 
-		c.cube.DrawMultiple(c.shader, 5, func(i int) mgl32.Mat4 {
-			return mgl32.Ident4().Mul4(mgl32.Translate3D(1, 0, float32(2*i)))
-		})
+		// c.cube.DrawMultiple(c.shader, 5, func(i int) mgl32.Mat4 {
+		// 	return mgl32.Ident4().Mul4(mgl32.Translate3D(1, 0, float32(2*i)))
+		// })
+		for _, obj := range c.worldState.objects {
+			obj.Parent.Draw(c.shader, obj.ModelMatrix)
+			log.Println("\n", obj, "\n", obj.ModelMatrix)
+		}
 
 		//post draw
 		c.window.GLSwap()

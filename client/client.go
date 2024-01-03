@@ -28,8 +28,6 @@ type Client struct {
 
 	lightingColor mgl32.Vec3
 
-	tmpServerState common.WorldState //don't want to implement packets on server until it works
-
 	worldState worldState
 }
 
@@ -94,20 +92,13 @@ func (c *Client) initialise() func() {
 	c.shader = gogl.Shader(gogl.NewEmbeddedShader(assets.TestVert, assets.QuadTexture))
 	c.texture = gogl.LoadTextureFromImage(assets.Metal_full)
 
-	c.tmpServerState = common.WorldState{
-		Volumes: []common.Volume{
-			common.NewVolume(mgl32.Vec3{-10, -5, -10}, mgl32.Vec3{10, -4, 10}),
-			common.NewVolume(mgl32.Vec3{-10, 5, -10}, mgl32.Vec3{10, 4, 10}),
-			common.NewVolume(mgl32.Vec3{-1, -1, -1}, mgl32.Vec3{1, 1, 1}),
-		},
-	}
+	c.connection.MustSend(common.ServerBoundWorldStateRequest{})
+	state := c.connection.MustRecieve().(common.ClientBoundWorldStateUpdate).State
 	var err error
-	c.worldState, err = NewWorldState(c.tmpServerState)
+	c.worldState, err = NewWorldState(state)
 	if err != nil {
-		log.Fatalln("failed to load world state from server:", err)
+		log.Fatalf("failed to load world state from server: %v\n", err)
 	}
-
-	gl.BindVertexArray(0)
 
 	c.connection.MustSend(common.ServerBoundLightingRequest{})
 
@@ -234,6 +225,12 @@ func (c *Client) handlePacket(rawPacket common.Packet) error {
 	switch packet := rawPacket.(type) {
 	case common.ClientBoundLightingUpdate:
 		c.lightingColor = packet.Color
+	case common.ClientBoundWorldStateUpdate:
+		var err error
+		err = c.worldState.Update(packet.State)
+		if err != nil {
+			log.Fatalln("failed to load world state from server:", err)
+		}
 	default:
 		return fmt.Errorf("unkown packet: %s", packet)
 	}

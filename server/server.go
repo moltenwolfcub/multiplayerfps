@@ -17,6 +17,7 @@ type Server struct {
 	peers      map[net.Addr]common.Connection
 
 	lightColor mgl32.Vec3
+	worldState common.WorldState
 }
 
 func NewServer(listenAddr string) *Server {
@@ -120,6 +121,13 @@ func (s *Server) packetLoop() {
 
 func (s *Server) initialise() {
 	s.lightColor = mgl32.Vec3{1, 0, 1}
+	s.worldState = common.WorldState{
+		Volumes: []common.Volume{
+			common.NewVolume(mgl32.Vec3{-10, -5, -10}, mgl32.Vec3{10, -4, 10}),
+			common.NewVolume(mgl32.Vec3{-10, 5, -10}, mgl32.Vec3{10, 4, 10}),
+			common.NewVolume(mgl32.Vec3{-1, -1, -1}, mgl32.Vec3{1, 1, 1}),
+		},
+	}
 }
 
 /*
@@ -135,6 +143,8 @@ Will figure out what kind of packet has been recieved
 and correctly handle how it should behave.
 */
 func (s *Server) handlePacket(recieved common.RecievedPacket) {
+	common.InfoLogger.Printf("recieve packet: %v", recieved)
+
 	switch packet := recieved.Packet.(type) {
 	case common.ServerBoundLightingRequest:
 		err := s.peers[recieved.Sender].Send(common.ClientBoundLightingUpdate{Color: s.lightColor})
@@ -148,6 +158,11 @@ func (s *Server) handlePacket(recieved common.RecievedPacket) {
 			if err != nil {
 				common.WarningLogger.Println("unable to send lighting update to client", err)
 			}
+		}
+	case common.ServerBoundWorldStateRequest:
+		err := s.peers[recieved.Sender].Send(common.ClientBoundWorldStateUpdate{State: s.worldState})
+		if err != nil {
+			common.WarningLogger.Println("unable to send world state update to client", err)
 		}
 
 	default:

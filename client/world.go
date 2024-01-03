@@ -34,7 +34,10 @@ func NewWorldState(state common.WorldState) (worldState, error) {
 		cache: ObjectCache{},
 	}
 
-	w.Update(state)
+	err := w.Update(state)
+	if err != nil {
+		return worldState{}, err
+	}
 
 	return w, nil
 }

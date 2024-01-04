@@ -26,8 +26,6 @@ type Client struct {
 	shader  gogl.Shader
 	texture gogl.TextureID
 
-	lightingColor mgl32.Vec3
-
 	worldState worldState
 }
 
@@ -99,8 +97,6 @@ func (c *Client) initialise() func() {
 	if err != nil {
 		log.Fatalf("failed to load world state from server: %v\n", err)
 	}
-
-	c.connection.MustSend(common.ServerBoundLightingRequest{})
 
 	c.keyboardState = sdl.GetKeyboardState()
 	c.camera = gogl.NewCamera(mgl32.Vec3{}, mgl32.Vec3{0, 1, 0}, 0, 0, 0.0025, 0.1)
@@ -195,8 +191,8 @@ func (c *Client) mainLoop() error {
 
 		c.shader.SetVec3("viewPos", c.camera.Pos)
 		c.shader.SetVec3("lightPos", mgl32.Vec3{3.3, 1, 0})
-		c.shader.SetVec3("lightColor", c.lightingColor)
-		c.shader.SetVec3("ambientLight", c.lightingColor.Mul(0.3))
+		c.shader.SetVec3("lightColor", c.worldState.lightCol)
+		c.shader.SetVec3("ambientLight", c.worldState.lightCol.Mul(0.3))
 
 		gogl.BindTexture(c.texture)
 
@@ -223,8 +219,6 @@ and correctly handle how it should behave.
 */
 func (c *Client) handlePacket(rawPacket common.Packet) error {
 	switch packet := rawPacket.(type) {
-	case common.ClientBoundLightingUpdate:
-		c.lightingColor = packet.Color
 	case common.ClientBoundWorldStateUpdate:
 		var err error
 		err = c.worldState.Update(packet.State)

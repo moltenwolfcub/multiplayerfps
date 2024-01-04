@@ -26,7 +26,8 @@ func (o ObjectInstance) String() string {
 type worldState struct {
 	cache ObjectCache
 
-	objects []ObjectInstance
+	objects  []ObjectInstance
+	lightCol mgl32.Vec3
 }
 
 func NewWorldState(state common.WorldState) (worldState, error) {
@@ -44,6 +45,8 @@ func NewWorldState(state common.WorldState) (worldState, error) {
 
 func (w worldState) String() string {
 	str := "worldState{"
+
+	str += fmt.Sprintf("lightCol[%v]", w.lightCol)
 
 	str += "objects["
 	for _, obj := range w.objects {
@@ -77,6 +80,8 @@ func (w *worldState) Update(state common.WorldState) error {
 		}
 		w.objects = append(w.objects, instance)
 	}
+
+	w.lightCol = state.LightCol
 
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
@@ -18,6 +19,8 @@ import (
 type Client struct {
 	listenAddr string
 	connection common.Connection
+	updates    []func()
+	mu         sync.Mutex
 
 	window        *sdl.Window
 	keyboardState []uint8
@@ -26,7 +29,9 @@ type Client struct {
 	shader  gogl.Shader
 	texture gogl.TextureID
 
-	worldState worldState
+	worldState *worldState
+
+	pos1 mgl32.Vec3
 }
 
 func NewClient(listenAddr string) *Client {
@@ -90,13 +95,8 @@ func (c *Client) initialise() func() {
 	c.shader = gogl.Shader(gogl.NewEmbeddedShader(assets.TestVert, assets.QuadTexture))
 	c.texture = gogl.LoadTextureFromImage(assets.Metal_full)
 
+	c.worldState = NewWorldState()
 	c.connection.MustSend(common.ServerBoundWorldStateRequest{})
-	state := c.connection.MustRecieve().(common.ClientBoundWorldStateUpdate).State
-	var err error
-	c.worldState, err = NewWorldState(state)
-	if err != nil {
-		log.Fatalf("failed to load world state from server: %v\n", err)
-	}
 
 	c.keyboardState = sdl.GetKeyboardState()
 	c.camera = gogl.NewCamera(mgl32.Vec3{}, mgl32.Vec3{0, 1, 0}, 0, 0, 0.0025, 0.1)
@@ -108,14 +108,23 @@ func (c *Client) initialise() func() {
 Main loop that'll handle the clientside logic and state.
 */
 func (c *Client) mainLoop() error {
-	colorPressed := true
-	pausePressed := true
+	colorPressed := false
+	pausePressed := false
+	placePressed := false
 
 	paused := false
 
 	elapsedTime := float32(0)
 	for {
 		frameStart := time.Now()
+
+		//handleUpdates
+		c.mu.Lock()
+		for _, update := range c.updates {
+			update()
+		}
+		c.updates = c.updates[:0]
+		c.mu.Unlock()
 
 		//handleEvents
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
@@ -162,6 +171,20 @@ func (c *Client) mainLoop() error {
 			}
 		} else if c.keyboardState[sdl.SCANCODE_R] == 0 && pausePressed {
 			pausePressed = false
+		}
+		if c.keyboardState[sdl.SCANCODE_P] != 0 && !placePressed {
+			placePressed = true
+
+			var empty mgl32.Vec3
+			if c.pos1 == empty {
+				c.pos1 = c.camera.Pos
+			} else {
+				v := common.NewVolume(c.pos1, c.camera.Pos)
+				c.connection.Send(common.ServerBoundAddVolume{Volume: v})
+				c.pos1 = mgl32.Vec3{}
+			}
+		} else if c.keyboardState[sdl.SCANCODE_P] == 0 && placePressed {
+			placePressed = false
 		}
 
 		//updateCamera
@@ -220,11 +243,16 @@ and correctly handle how it should behave.
 func (c *Client) handlePacket(rawPacket common.Packet) error {
 	switch packet := rawPacket.(type) {
 	case common.ClientBoundWorldStateUpdate:
-		var err error
-		err = c.worldState.Update(packet.State)
-		if err != nil {
-			log.Fatalln("failed to load world state from server:", err)
+		c.mu.Lock()
+		update := func() {
+			err := c.worldState.Update(packet.State)
+			if err != nil {
+				log.Fatalln("failed to load world state from server:", err)
+			}
 		}
+		c.updates = append(c.updates, update)
+		c.mu.Unlock()
+
 	default:
 		return fmt.Errorf("unkown packet: %s", packet)
 	}

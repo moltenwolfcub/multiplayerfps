@@ -147,14 +147,24 @@ func (s *Server) handlePacket(recieved common.RecievedPacket) {
 		s.worldState.LightCol = packet.Color
 		for _, conn := range s.peers {
 			err := conn.Send(common.ClientBoundWorldStateUpdate{State: s.worldState})
+			common.InfoLogger.Println("sent world state packet")
 			if err != nil {
 				common.WarningLogger.Println("unable to send world state update to client", err)
 			}
 		}
 	case common.ServerBoundWorldStateRequest:
 		err := s.peers[recieved.Sender].Send(common.ClientBoundWorldStateUpdate{State: s.worldState})
+		common.InfoLogger.Println("sent world state packet")
 		if err != nil {
 			common.WarningLogger.Println("unable to send world state update to client", err)
+		}
+	case common.ServerBoundAddVolume:
+		s.worldState.Volumes = append(s.worldState.Volumes, packet.Volume)
+		for _, conn := range s.peers {
+			err := conn.Send(common.ClientBoundWorldStateUpdate{State: s.worldState})
+			if err != nil {
+				common.WarningLogger.Println("unable to send world state update to client", err)
+			}
 		}
 
 	default:

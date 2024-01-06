@@ -30,17 +30,13 @@ type worldState struct {
 	lightCol mgl32.Vec3
 }
 
-func NewWorldState(state common.WorldState) (worldState, error) {
-	w := worldState{
-		cache: ObjectCache{},
+func NewWorldState() *worldState {
+	w := &worldState{
+		cache:   ObjectCache{},
+		objects: make([]ObjectInstance, 0),
 	}
 
-	err := w.Update(state)
-	if err != nil {
-		return worldState{}, err
-	}
-
-	return w, nil
+	return w
 }
 
 func (w worldState) String() string {
@@ -61,7 +57,7 @@ func (w worldState) String() string {
 }
 
 func (w *worldState) Update(state common.WorldState) error {
-	w.objects = make([]ObjectInstance, 0)
+	w.objects = w.objects[:0]
 
 	for _, vol := range state.Volumes {
 		k := ObjectKey{

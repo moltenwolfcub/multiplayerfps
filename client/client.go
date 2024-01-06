@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
@@ -19,8 +18,7 @@ import (
 type Client struct {
 	listenAddr string
 	connection common.Connection
-	updates    []func()
-	mu         sync.Mutex
+	updates    chan func()
 
 	window        *sdl.Window
 	keyboardState []uint8
@@ -37,6 +35,7 @@ type Client struct {
 func NewClient(listenAddr string) *Client {
 	return &Client{
 		listenAddr: listenAddr,
+		updates:    make(chan func(), 10),
 	}
 }
 
@@ -119,12 +118,24 @@ func (c *Client) mainLoop() error {
 		frameStart := time.Now()
 
 		//handleUpdates
-		c.mu.Lock()
-		for _, update := range c.updates {
-			update()
+		// c.mu.Lock()
+		// for _, update := range c.updates {
+		// 	update()
+		// }
+		// c.updates = c.updates[:0]
+		// c.mu.Unlock()
+		updatesDone := false
+		for !updatesDone {
+			select {
+			case f := <-c.updates:
+				f()
+			default:
+				updatesDone = true
+			}
 		}
-		c.updates = c.updates[:0]
-		c.mu.Unlock()
+		// for len(c.updatesCH) > 0 {
+		// 	(<-c.updatesCH)()
+		// }
 
 		//handleEvents
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
@@ -243,15 +254,15 @@ and correctly handle how it should behave.
 func (c *Client) handlePacket(rawPacket common.Packet) error {
 	switch packet := rawPacket.(type) {
 	case common.ClientBoundWorldStateUpdate:
-		c.mu.Lock()
-		update := func() {
+		// c.mu.Lock()
+		c.updates <- func() {
 			err := c.worldState.Update(packet.State)
 			if err != nil {
 				log.Fatalln("failed to load world state from server:", err)
 			}
 		}
-		c.updates = append(c.updates, update)
-		c.mu.Unlock()
+		// c.updates = append(c.updates, update)
+		// c.mu.Unlock()
 
 	default:
 		return fmt.Errorf("unkown packet: %s", packet)
